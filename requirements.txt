@@ -1,6 +1,5 @@
 google-generativeai==0.8.5
 python-dotenv==1.1.0
 python-dotenv
-google-genai
-pandas==1.5.3
-pandasai==2.3.0
+#google-genai
+

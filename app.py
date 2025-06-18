@@ -20,8 +20,8 @@ def LLM_Response(question):
 
 st.title("Chat Application using Gemini KEY")
 
-user_quest = st.text_input("Man:")
-btn = st.button("Ask")
+user_quest = st.text_input("faça sua pergunta:")
+btn = st.button("Resposta")
 
 if btn and user_quest:
     result = LLM_Response(user_quest)

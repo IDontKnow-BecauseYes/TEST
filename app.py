@@ -20,6 +20,16 @@ def LLM_Response(question):
 
 st.title("Chat Application using Gemini KEY")
 
+st.markdown("""
+<style>
+.stTextInput input {
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 user_quest = st.text_input("faça sua pergunta:")
 btn = st.button("Resposta")
 

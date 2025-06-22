@@ -28,6 +28,14 @@ st.markdown("""
   border: 1px solid #ccc;
   padding: 8px;
 }
+
+h1 {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 2.2rem;
+  color: #333333;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
 </style>
 """, unsafe_allow_html=True)
 

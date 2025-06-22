@@ -20,6 +20,7 @@ def LLM_Response(question):
 
 st.title("Chat Application using Gemini KEY")
 
+#customizando a caixa de texto
 st.markdown("""
 <style>
 .stTextInput input {
@@ -48,3 +49,6 @@ if btn and user_quest:
 #https://www.youtube.com/watch?v=tsh0oSAdoBk
 #https://towardsdatascience.com/step-by-step-guide-to-build-and-deploy-an-llm-powered-chat-with-memory-in-streamlit/
 #https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android?hl=pt-br
+
+#fonte Antonio Carlos:
+#https://www.youtube.com/watch?v=jbJpAdGlKVY - Aprendendo a usar css no streamlit

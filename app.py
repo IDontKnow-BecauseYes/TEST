@@ -18,7 +18,7 @@ def LLM_Response(question):
     response = chat.send_message(question,stream=True)
     return response
 
-st.title("Chat Application using Gemini KEY")
+st.title("Chat Aplicação usando Gemini key!")
 
 #customizando a caixa de texto
 st.markdown("""

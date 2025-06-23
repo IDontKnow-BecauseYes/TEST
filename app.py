@@ -19,7 +19,7 @@ def LLM_Response(question):
     return response
 
 # Configuração básica da página
-st.set_page_config(page_title="Chat com Gemini", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Chat com Gemini", layout="centered")
 
 # Título estilizado
 st.title("Chat Aplicação usando Gemini key!")

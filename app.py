@@ -62,6 +62,10 @@ if btn and user_quest:
         for word in result:
             st.write(word.text)
 
+st.title('Testando dowload de arquivo')
+
+arquivoUpload = st.file_uploader('Dowload aqui', type='txt)
+
 # Fontes
 # https://medium.com/@speaktoharisudhan/building-a-gemini-powered-chatbot-in-streamlit-e241ed5958c4
 # https://medium.com/@suraj_bansal/build-your-own-ai-chatbot-a-beginners-guide-to-rag-and-langchain-0189a18ec401
@@ -73,3 +77,4 @@ if btn and user_quest:
 # fonte Antonio Carlos:
 # https://www.youtube.com/watch?v=jbJpAdGlKVY - Aprendendo a usar css no streamlit
 # https://www.youtube.com/watch?v=jUNCsyRTQMs&pp=ygUUZXN0cnV0dXJhIHN0cmVhbWlsaXQ%3D - estrutura basica
+# https://www.youtube.com/watch?v=shsCAZpBoZo - Aprendendo a criar um codigo que anexa arquivos no streamilit

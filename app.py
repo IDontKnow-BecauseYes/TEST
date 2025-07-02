@@ -14,8 +14,8 @@ chat = model.start_chat()
 
 # Função para enviar pergunta ao Gemini
 def LLM_Response(question):
-    response = chat.send_message(question, stream=True)
-    return response
+    response = chat.send_message(question, stream=False)
+    return response.text
 
 # Função para encontrar a coluna de detentor
 def encontrar_coluna_detentor(colunas):
@@ -93,9 +93,7 @@ btn = st.button("Resposta")
 # Verifica e responde
 if btn and user_quest:
     with st.spinner("Pensando..."):
-        resposta = ""
-        for word in LLM_Response(user_quest):
-            resposta += word.text
+        resposta = LLM_Response(user_quest)
         st.markdown("### 💬 Resposta:")
         st.write(resposta)
 

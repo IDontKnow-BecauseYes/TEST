@@ -25,16 +25,31 @@ def encontrar_coluna_detentor(colunas):
     return None
 
 # Função de comparação de arquivos
-def comparar_arquivos():
-    caminho_db = '/content/deposito7grauti (3).db'
-    caminho_csv = '/content/bens7sr2025 (2).csv'
+def comparar_arquivos(arquivo_db, arquivo_csv):
+    if not arquivo_db or not arquivo_csv:
+        st.warning("Por favor, envie ambos os arquivos: .db e .csv.")
+        return
 
-    con = sqlite3.connect(caminho_db)
-    df_db = pd.read_sql("SELECT * FROM bens", con)
-    con.close()
+    with open("/tmp/temp_db.sqlite", "wb") as f:
+        f.write(arquivo_db.read())
+    con = sqlite3.connect("/tmp/temp_db.sqlite")
+
+    try:
+        df_db = pd.read_sql("SELECT * FROM bens", con)
+    except Exception as e:
+        st.error(f"Erro ao ler tabela 'bens' do banco: {e}")
+        return
+    finally:
+        con.close()
+
     df_db.columns = df_db.columns.str.lower().str.strip()
 
-    df_csv = pd.read_csv(caminho_csv, sep=None, engine='python')
+    try:
+        df_csv = pd.read_csv(arquivo_csv)
+    except Exception as e:
+        st.error(f"Erro ao ler arquivo CSV: {e}")
+        return
+
     df_csv.columns = df_csv.columns.str.lower().str.strip()
 
     if 'tombamento' not in df_db.columns or 'tombamento' not in df_csv.columns:
@@ -87,8 +102,12 @@ if btn and user_quest:
         if "analise de dados" in resposta.lower():
             opcao = st.radio("Escolha uma opção de análise:", ["Comparação de arquivos", "Outra opção"])
             if opcao == "Comparação de arquivos":
-                comparar_arquivos()
+                with st.expander("🔍 Enviar arquivos para Análise de Dados"):
+                    arquivo_db = st.file_uploader("📦 Envie o banco de dados (.db):", type=["db"])
+                    arquivo_csv = st.file_uploader("📄 Envie o arquivo CSV (.csv):", type=["csv"])
+                    if st.button("Comparar arquivos"):
+                        comparar_arquivos(arquivo_db, arquivo_csv)
 
-# Upload de arquivos
+# Upload de arquivos texto (opcional)
 st.title('Testando upload de arquivo')
 arquivoUpload = st.file_uploader('Upload aqui', type='txt')

@@ -108,4 +108,4 @@ if btn and user_quest:
 
 # Upload de arquivos texto (opcional)
 st.title('Testando upload de arquivo')
-arquivoUpload = st.file_uploader('Upload aqui', type='txt')
+arquivoUpload = st.file_uploader('Upload aqui', type='csv')

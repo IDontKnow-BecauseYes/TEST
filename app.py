@@ -1,80 +1,94 @@
 import os
-#from dotenv import load_dotenv
 import streamlit as st
 from io import StringIO
 import google.generativeai as ggi
+import pandas as pd
+import sqlite3
 
-#load_dotenv()
-#load_dotenv(".env")
+# Configura a API key do Gemini
+ggi.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-fetcheed_api_key = os.getenv("GOOGLE_API_KEY")
-ggi.configure(api_key = fetcheed_api_key)
-
-#model = ggi.GenerativeModel("gemini-1.5-pro") 
+# Inicializa o modelo
 model = ggi.GenerativeModel("gemini-2.0-flash")
 chat = model.start_chat()
 
+# Função para enviar pergunta ao Gemini
 def LLM_Response(question):
     response = chat.send_message(question, stream=True)
     return response
 
+# Função para encontrar a coluna de detentor
+def encontrar_coluna_detentor(colunas):
+    for col in colunas:
+        if 'detentor' in col:
+            return col
+    return None
+
+# Função de comparação de arquivos
+def comparar_arquivos():
+    caminho_db = '/content/deposito7grauti (3).db'
+    caminho_csv = '/content/bens7sr2025 (2).csv'
+
+    con = sqlite3.connect(caminho_db)
+    df_db = pd.read_sql("SELECT * FROM bens", con)
+    con.close()
+    df_db.columns = df_db.columns.str.lower().str.strip()
+
+    df_csv = pd.read_csv(caminho_csv, sep=None, engine='python')
+    df_csv.columns = df_csv.columns.str.lower().str.strip()
+
+    if 'tombamento' not in df_db.columns or 'tombamento' not in df_csv.columns:
+        st.error("A coluna 'tombamento' não foi encontrada em um dos arquivos.")
+        return
+
+    coluna_detentor_db = encontrar_coluna_detentor(df_db.columns)
+    coluna_detentor_csv = encontrar_coluna_detentor(df_csv.columns)
+
+    if not coluna_detentor_db or not coluna_detentor_csv:
+        st.error("Não foi possível identificar a coluna de 'detentor' nos arquivos.")
+        return
+
+    df_db_filtrado = df_db[["tombamento", coluna_detentor_db]].drop_duplicates()
+    df_csv_filtrado = df_csv[["tombamento", coluna_detentor_csv]].drop_duplicates()
+
+    intersecao = pd.merge(df_db_filtrado, df_csv_filtrado, on="tombamento", how="inner", suffixes=("_db", "_csv"))
+    divergentes = intersecao[intersecao[f'{coluna_detentor_db}_db'] != intersecao[f'{coluna_detentor_csv}_csv']]
+
+    tabela_nova = pd.DataFrame({
+        'Tombamento': divergentes['tombamento'],
+        'Arq_Adiminstração': divergentes[f'{coluna_detentor_db}_db'],
+        'Arq_7grauTI': divergentes[f'{coluna_detentor_csv}_csv']
+    })
+
+    st.markdown("### 🔍 Resultado da Comparação")
+    st.dataframe(tabela_nova)
+
 # Configuração básica da página
 st.set_page_config(page_title="Chat com Gemini", layout="centered")
 
-# Título estilizado
+# Título
 st.title("Chat Aplicação usando Gemini key!")
 
-# Estilização básica com CSS
-st.markdown("""
-<style>
-.stTextInput input {
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  padding: 8px;
-}
-h1 {
-  font-family: 'Segoe UI', sans-serif;
-  font-size: 2.2rem;
-  color: #333333;
-  letter-spacing: 1px;
-  margin-bottom: 0.5rem;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Explicação rápida
-st.write("Faça uma pergunta e receba uma resposta da IA!")
-
 # Campo de entrada
-with st.container():
-    user_quest = st.text_input("Digite sua pergunta aqui:", placeholder="Ex: Qual a capital da Noruega?")
+user_quest = st.text_input("Digite sua pergunta aqui:", placeholder="Ex: Qual a capital da Noruega?")
 
-    # Botão centralizado
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        btn = st.button("Resposta")
+# Botão
+btn = st.button("Resposta")
 
-# Exibir a resposta
+# Verifica e responde
 if btn and user_quest:
     with st.spinner("Pensando..."):
-        result = LLM_Response(user_quest)
+        resposta = ""
+        for word in LLM_Response(user_quest):
+            resposta += word.text
         st.markdown("### 💬 Resposta:")
-        for word in result:
-            st.write(word.text)
+        st.write(resposta)
 
-st.title('Testando dowload de arquivo')
+        if "analise de dados" in resposta.lower():
+            opcao = st.radio("Escolha uma opção de análise:", ["Comparação de arquivos", "Outra opção"])
+            if opcao == "Comparação de arquivos":
+                comparar_arquivos()
 
-arquivoUpload = st.file_uploader('Dowload aqui', type='txt)
-
-# Fontes
-# https://medium.com/@speaktoharisudhan/building-a-gemini-powered-chatbot-in-streamlit-e241ed5958c4
-# https://medium.com/@suraj_bansal/build-your-own-ai-chatbot-a-beginners-guide-to-rag-and-langchain-0189a18ec401
-# https://blog.jetbrains.com/pt-br/pycharm/2025/05/como-criar-chatbots-com-o-langchain/#
-# https://www.youtube.com/watch?v=tsh0oSAdoBk
-# https://towardsdatascience.com/step-by-step-guide-to-build-and-deploy-an-llm-powered-chat-with-memory-in-streamlit/
-# https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android?hl=pt-br
-
-# fonte Antonio Carlos:
-# https://www.youtube.com/watch?v=jbJpAdGlKVY - Aprendendo a usar css no streamlit
-# https://www.youtube.com/watch?v=jUNCsyRTQMs&pp=ygUUZXN0cnV0dXJhIHN0cmVhbWlsaXQ%3D - estrutura basica
-# https://www.youtube.com/watch?v=shsCAZpBoZo - Aprendendo a criar um codigo que anexa arquivos no streamilit
+# Upload de arquivos
+st.title('Testando upload de arquivo')
+arquivoUpload = st.file_uploader('Upload aqui', type='txt')

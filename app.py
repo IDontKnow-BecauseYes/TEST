@@ -80,7 +80,6 @@ def comparar_arquivos(arquivo_db, arquivo_csv):
 
 # Configuração básica da página
 st.set_page_config(page_title="Chat com Gemini", 
-                   page_icon="🧊",
                    initial_sidebar="expanded",
                    menu_itens={
                        'Get Help': 'https://www.extremelycoolapp.com/help',

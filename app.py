@@ -79,7 +79,16 @@ def comparar_arquivos(arquivo_db, arquivo_csv):
     st.dataframe(tabela_nova)
 
 # Configuração básica da página
-st.set_page_config(page_title="Chat com Gemini", layout="centered")
+st.set_page_config(page_title="Chat com Gemini", 
+                   layout="centered"
+                   page_icon="🧊",
+                   initial_sidebar="expanded",
+                   menu_itens={
+                       'Get Help': 'https://www.extremelycoolapp.com/help',
+                       'Report a bug': "https://www.extremelycoolapp.com/bug",
+                       'About': "# This is a header. This is an *extremely* cool app!"
+                   }
+)
 
 # Título
 st.title("Chat Aplicação usando Gemini key!")

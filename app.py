@@ -16,14 +16,14 @@ This app expects three CSVs to be uploaded through the sidebar:
       * WKT string column (geometry) OR
       * columns with centroid lat/lon (latitude, longitude)
       * column with state name (nome_estado)
- - POCOS_CODEVASF.csv  -> wells data with at least municipality name (nome_municipio) and optional coordinates
+ - POCOS_CODEVASF.csv  -> wells data with at least municipality name (nome_municipio) and an optional column indicating number of wells (POCOS_DEMANDADOS or POCOS_AUTORIZADOS)
 
 Behavior:
  - The user types a municipality name or a state name in the text input.
- - If the input matches a municipality -> the app aggregates number of wells in that municipality and draws a focused map showing wells and a circle "zone" whose size scales with number of wells.
+ - If the input matches a municipality -> the app aggregates number of wells in that municipality using the numeric column when available (POCOS_DEMANDADOS preferred, then POCOS_AUTORIZADOS) and draws a focused map showing wells and a circle "zone" whose size scales with number of wells.
  - If the input matches a state -> the app zooms to the state's area and shows all municipalities in that state that have wells, with zone circles sized by well counts.
 
-The code is defensive and attempts to auto-detect common column names (case-insensitive).
+The code tries to detect common column names (case-insensitive). If no numeric column is found, it falls back to counting records (as before).
 """
 
 import streamlit as st
@@ -57,7 +57,19 @@ def find_column(df, candidates):
 def normalize_name(x):
     if pd.isna(x):
         return ""
-    return str(x).strip().lower().replace("ç", "c").replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u").replace("â","a").replace("ô","o")
+    return (
+        str(x)
+        .strip()
+        .lower()
+        .replace("ç", "c")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+        .replace("â", "a")
+        .replace("ô", "o")
+    )
 
 
 def detect_geometry_column(df):
@@ -69,8 +81,6 @@ def detect_geometry_column(df):
         # simple heuristics
         if sample.str.startswith('{').any() or sample.str.startswith('[').any():
             return col, 'geojson'
-        if sample.str.startswith('POINT') | sample.str.str.startswith('POLYGON') if False else False:
-            pass
         # WKT detection
         if sample.str.contains('POINT|POLYGON|MULTIPOLYGON|LINESTRING', regex=True).any():
             return col, 'wkt'
@@ -82,10 +92,10 @@ def make_map(center, zoom=6):
     return m
 
 
-def add_zone_circle(m, lat, lon, count, popup_text=None):
+def add_zone_circle(m, lat, lon, count, popup_text=None, scale_factor=1.0):
     # Size scaling: radius in meters. use sqrt scaling so that doubling wells ~ 1.41x radius
     base = 300  # base radius for one well (meters)
-    radius = int(base * (np.sqrt(count)))
+    radius = int(base * (np.sqrt(count)) * scale_factor)
     folium.Circle(
         location=(lat, lon),
         radius=radius,
@@ -106,7 +116,7 @@ with st.sidebar.expander("Uploads e configurações", expanded=True):
     pocos_file = st.file_uploader("POCOS_CODEVASF.csv", type=['csv'], key='pocos')
     scale_factor = st.slider("Fator de escala de zonas", min_value=0.5, max_value=5.0, value=1.0, step=0.1)
 
-query = st.text_input("Digite o nome de município ou estado (ex: 'Teresina' ou 'Piauí'):")
+query = st.text_input("Digite o nome de município ou estado (ex: 'Teresina' ou 'Piauí'): ")
 
 if not (cidades_file and estados_file and pocos_file):
     st.warning("Faça upload dos três arquivos na barra lateral para prosseguir.")
@@ -115,10 +125,10 @@ if not (cidades_file and estados_file and pocos_file):
 # ---------------------- Load CSVs ----------------------
 
 try:
+    # usuário informou que o separador é ponto-e-vírgula e arquivos costumam estar em latin1
     df_cidades = pd.read_csv(cidades_file, sep=';', engine='python', encoding='latin1')
     df_estados = pd.read_csv(estados_file, sep=';', engine='python', encoding='latin1')
     df_pocos = pd.read_csv(pocos_file, sep=';', engine='python', encoding='latin1')
-   
 except Exception as e:
     st.error(f"Erro ao ler os arquivos CSV: {e}")
     st.stop()
@@ -159,8 +169,24 @@ if state_col:
 if est_name_col:
     df_estados['__state_norm'] = df_estados[est_name_col].astype(str).apply(normalize_name)
 
-# Aggregate well counts by normalized municipality
-pocos_counts = df_pocos.groupby('__mun_norm').size().reset_index(name='well_count')
+# ---------------------- Aggregate wells correctly ----------------------
+# Prefer numeric column POCOS_DEMANDADOS, then POCOS_AUTORIZADOS, then fallback to row counts.
+count_col_candidates = [
+    'pocos_demandados', 'pocos_demandado', 'pocos_demanda',
+    'POCOS_DEMANDADOS', 'POCOS_AUTORIZADOS', 'pocos_autorizados',
+    'autorizados', 'qtd_pocos', 'quantidade_pocos', 'quantidade'
+]
+count_col = find_column(df_pocos, count_col_candidates)
+
+if count_col is not None:
+    # try convert to numeric
+    df_pocos['_count_numeric'] = pd.to_numeric(df_pocos[count_col].astype(str).str.replace(',', '.'), errors='coerce').fillna(0).astype(int)
+    pocos_counts = df_pocos.groupby('__mun_norm')['_count_numeric'].sum().reset_index(name='well_count')
+    count_source = count_col
+else:
+    # fallback: count rows per municipality
+    pocos_counts = df_pocos.groupby('__mun_norm').size().reset_index(name='well_count')
+    count_source = 'rows_count'
 
 # Merge counts into cidades (use normalized)
 cidades_merged = df_cidades.merge(pocos_counts, how='left', left_on='__mun_norm', right_on='__mun_norm')
@@ -215,6 +241,7 @@ if query:
         mun_row = mun_matches.iloc[0]
         count = int(mun_row['well_count'])
         st.metric(label='Número de poços neste município', value=count)
+        st.caption(f"Fonte do total: {count_source}")
 
         # Build focused map
         if not np.isnan(mun_row.get('__lat', np.nan)) and not np.isnan(mun_row.get('__lon', np.nan)):
@@ -259,6 +286,7 @@ if query:
             in_state_with_wells = in_state[in_state['well_count'] > 0]
 
             st.metric('Municípios com poços neste estado', len(in_state_with_wells))
+            st.caption(f"Fonte do total por município: {count_source}")
 
             # Determine center and zoom
             if gdf_est is not None and '__state_norm' in gdf_est.columns:
@@ -292,7 +320,7 @@ if query:
                 lon = r.get('__lon', None)
                 if pd.notna(lat) and pd.notna(lon):
                     popup = f"{r[mun_col]} — {int(r['well_count'])} poços"
-                    add_zone_circle(m, lat, lon, int(r['well_count']), popup_text=popup)
+                    add_zone_circle(m, lat, lon, int(r['well_count']), popup_text=popup, scale_factor=scale_factor)
                     folium.Marker(location=(lat, lon), popup=popup).add_to(m)
 
             st_folium(m, width=1000)
@@ -307,10 +335,12 @@ else:
 
 st.markdown('---')
 if st.button('Exportar resumo de municípios com poços (CSV)'):
-    export_df = cidades_merged[['__mun_norm', mun_col, state_col if state_col else None, 'well_count']].copy()
-    # drop None column name
-    export_df = export_df.loc[:, ~export_df.columns.isnull()]
-    csv = export_df.to_csv(index=False)
+    export_cols = ['__mun_norm', mun_col]
+    if state_col:
+        export_cols.append(state_col)
+    export_cols.append('well_count')
+    export_df = cidades_merged[export_cols].copy()
+    csv = export_df.to_csv(index=False, sep=';', encoding='latin1')
     st.download_button('Download CSV', data=csv, file_name='municipios_pocos_resumo.csv', mime='text/csv')
 
 st.caption('Feito para uso educacional. Ajuste os nomes de colunas conforme seus arquivos CSV.')

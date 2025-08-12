@@ -170,63 +170,47 @@ if est_name_col:
     df_estados['__state_norm'] = df_estados[est_name_col].astype(str).apply(normalize_name)
 
 # ---------------------- Aggregate wells correctly ----------------------
-# Prefer numeric column POCOS_DEMANDADOS, then POCOS_AUTORIZADOS, then fallback to row counts.
-count_col_candidates = [
-    'pocos_demandados', 'pocos_demandado', 'pocos_demanda',
-    'POCOS_DEMANDADOS', 'POCOS_AUTORIZADOS', 'pocos_autorizados',
-    'autorizados', 'qtd_pocos', 'quantidade_pocos', 'quantidade'
+# ... (antes permanece igual)
+
+# Função para mostrar tabela e botão download, recebe um DataFrame filtrado
+cols_to_show = [
+    'NUMERO_EDOC',
+    'NOME_SOLICITANTE',
+    'POCOS_DEMANDADOS',
+    'POCOS_AUTORIZADOS',
+    'ORDEM_EXECUCAO_DATA',
+    'NUMERO_CONTRATADO',
+    'EMPRESA_CONTRATADA',
 ]
-count_col = find_column(df_pocos, count_col_candidates)
 
-if count_col is not None:
-    # try convert to numeric
-    df_pocos['_count_numeric'] = pd.to_numeric(df_pocos[count_col].astype(str).str.replace(',', '.'), errors='coerce').fillna(0).astype(int)
-    pocos_counts = df_pocos.groupby('__mun_norm')['_count_numeric'].sum().reset_index(name='well_count')
-    count_source = count_col
-else:
-    # fallback: count rows per municipality
-    pocos_counts = df_pocos.groupby('__mun_norm').size().reset_index(name='well_count')
-    count_source = 'rows_count'
+cols_pretty_names = {
+    'NUMERO_EDOC': 'Número EDOC',
+    'NOME_SOLICITANTE': 'Nome Solicitante',
+    'POCOS_DEMANDADOS': 'Poços Demandados',
+    'POCOS_AUTORIZADOS': 'Poços Autorizados',
+    'ORDEM_EXECUCAO_DATA': 'Data da Execução',
+    'NUMERO_CONTRATADO': 'Número Contratado',
+    'EMPRESA_CONTRATADA': 'Empresa Contratada',
+}
 
-# Merge counts into cidades (use normalized)
-cidades_merged = df_cidades.merge(pocos_counts, how='left', left_on='__mun_norm', right_on='__mun_norm')
-if 'well_count' not in cidades_merged:
-    cidades_merged['well_count'] = 0
-cidades_merged['well_count'] = cidades_merged['well_count'].fillna(0).astype(int)
+def show_table_and_download(df_filtered):
+    if df_filtered.empty:
+        st.info("Nenhum dado detalhado disponível para essa seleção.")
+        return
 
-# Ensure city centroids
-if lat_col is None or lon_col is None:
-    st.warning('CIDADES_BRASIL.csv não tem colunas de latitude/longitude detectadas. Alguns mapas podem não centrar corretamente.')
+    cols_existentes = [c for c in cols_to_show if c in df_filtered.columns]
+    df_show = df_filtered[cols_existentes].copy()
+    df_show.rename(columns=cols_pretty_names, inplace=True)
+    st.markdown("### Detalhes dos Poços")
+    st.dataframe(df_show, use_container_width=True)
 
-# Make a quick geodataframe for municipalities if lat/lon exist
-if lat_col and lon_col:
-    cidades_merged['__lat'] = pd.to_numeric(cidades_merged[lat_col], errors='coerce')
-    cidades_merged['__lon'] = pd.to_numeric(cidades_merged[lon_col], errors='coerce')
-    gdf_mun = gpd.GeoDataFrame(cidades_merged, geometry=gpd.points_from_xy(cidades_merged['__lon'], cidades_merged['__lat']))
-else:
-    gdf_mun = None
-
-# Prepare estados geodataframe if we can parse geometry
-if geom_col and geom_type == 'wkt':
-    try:
-        df_estados['geometry'] = df_estados[geom_col].apply(wkt.loads)
-        gdf_est = gpd.GeoDataFrame(df_estados, geometry='geometry')
-    except Exception:
-        gdf_est = None
-elif geom_col and geom_type == 'geojson':
-    # try to parse geojson
-    try:
-        geometries = df_estados[geom_col].apply(lambda s: shape(json.loads(s)) if isinstance(s, str) else None)
-        df_estados['geometry'] = geometries
-        gdf_est = gpd.GeoDataFrame(df_estados, geometry='geometry')
-    except Exception:
-        gdf_est = None
-elif est_lat is not None and est_lon is not None:
-    df_estados['__lat'] = pd.to_numeric(df_estados[est_lat], errors='coerce')
-    df_estados['__lon'] = pd.to_numeric(df_estados[est_lon], errors='coerce')
-    gdf_est = gpd.GeoDataFrame(df_estados, geometry=gpd.points_from_xy(df_estados['__lon'], df_estados['__lat']))
-else:
-    gdf_est = None
+    csv = df_show.to_csv(index=False, sep=';', encoding='latin1')
+    st.download_button(
+        label="Download dos dados detalhados (CSV)",
+        data=csv,
+        file_name="dados_pocos_detalhados.csv",
+        mime="text/csv",
+    )
 
 # ---------------------- Query handling ----------------------
 
@@ -236,24 +220,20 @@ if query:
     mun_matches = cidades_merged[cidades_merged['__mun_norm'] == qnorm]
 
     if len(mun_matches) >= 1:
-        # Municipality path
+        # Município encontrado
         st.subheader(f"Município encontrado: {mun_matches.iloc[0][mun_col]}")
         mun_row = mun_matches.iloc[0]
         count = int(mun_row['well_count'])
         st.metric(label='Número de poços neste município', value=count)
         st.caption(f"Fonte do total: {count_source}")
 
-        # Build focused map
         if not np.isnan(mun_row.get('__lat', np.nan)) and not np.isnan(mun_row.get('__lon', np.nan)):
             center = (mun_row['__lat'], mun_row['__lon'])
             m = make_map(center=center, zoom=12)
-            # add city marker
             folium.Marker(location=center, popup=f"{mun_row[mun_col]} — {count} poços").add_to(m)
-            # add zone circle
             radius = int(300 * np.sqrt(max(1, count)) * scale_factor)
             folium.Circle(location=center, radius=radius, color='blue', fill=True, fill_opacity=0.2, popup=f"Zona: {count} poços").add_to(m)
 
-            # If pocos file has lat/lon, show individual wells in that municipality
             if pocos_lat and pocos_lon:
                 pocos_in_mun = df_pocos[df_pocos['__mun_norm'] == qnorm]
                 for _, r in pocos_in_mun.iterrows():
@@ -265,47 +245,46 @@ if query:
                         pass
 
             st_data = st_folium(m, width=900)
+
+            # Mostrar tabela e botão download para município
+            show_table_and_download(pocos_in_mun)
+
         else:
             st.info('Latitude/longitude do município não disponível. Listando resumo de poços no CSV:')
             st.write(mun_row.to_dict())
 
     else:
-        # try state match
+        # Tenta estado
         state_matches = df_estados[df_estados['__state_norm'] == qnorm] if '__state_norm' in df_estados else pd.DataFrame()
         if len(state_matches) >= 1:
             st.subheader(f"Estado encontrado: {state_matches.iloc[0][est_name_col]}")
             state_row = state_matches.iloc[0]
 
-            # Filter municipalities in this state (if cidades has state column)
             if '__state_norm' in cidades_merged.columns:
                 in_state = cidades_merged[cidades_merged['__state_norm'] == qnorm]
             else:
                 in_state = cidades_merged[cidades_merged[mun_col].astype(str).str.contains('', na=False)]
 
-            # Keep only municipalities with wells
             in_state_with_wells = in_state[in_state['well_count'] > 0]
 
             st.metric('Municípios com poços neste estado', len(in_state_with_wells))
             st.caption(f"Fonte do total por município: {count_source}")
 
-            # Determine center and zoom
             if gdf_est is not None and '__state_norm' in gdf_est.columns:
                 est_geom = gdf_est[gdf_est['__state_norm'] == qnorm]
                 if not est_geom.empty:
-                    bounds = est_geom.geometry.total_bounds  # minx, miny, maxx, maxy
+                    bounds = est_geom.geometry.total_bounds
                     center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
                     m = make_map(center=center, zoom=6)
-                    # add state polygon if available
                     try:
                         for geom in est_geom.geometry:
                             folium.GeoJson(data=gpd.GeoSeries(geom).__geo_interface__, name='Estado').add_to(m)
                     except Exception:
                         pass
                 else:
-                    center = ( -15.0, -55.0)
+                    center = (-15.0, -55.0)
                     m = make_map(center=center, zoom=4)
             else:
-                # fallback: center map on mean of municipalities lat/lon if available
                 if lat_col and lon_col and not in_state_with_wells.empty:
                     mean_lat = in_state_with_wells['__lat'].mean()
                     mean_lon = in_state_with_wells['__lon'].mean()
@@ -314,7 +293,6 @@ if query:
                 else:
                     m = make_map(center=(-15.0, -55.0), zoom=4)
 
-            # Add municipality zones
             for _, r in in_state_with_wells.iterrows():
                 lat = r.get('__lat', None)
                 lon = r.get('__lon', None)
@@ -325,11 +303,17 @@ if query:
 
             st_folium(m, width=1000)
 
+            # Mostrar tabela e botão download para estado
+            pocos_in_state = df_pocos[df_pocos['__mun_norm'].isin(in_state_with_wells['__mun_norm'])]
+            show_table_and_download(pocos_in_state)
+
         else:
             st.warning('Nenhum município nem estado claramente identificado com esse nome. Verifique grafia e tente novamente.')
 
 else:
     st.info('Digite um município ou estado e pressione Enter para visualizar.')
+
+# ... (restante do código permanece igual)
 
 # ---------------------- Footer / Export ----------------------
 

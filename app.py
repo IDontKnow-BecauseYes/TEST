@@ -115,9 +115,10 @@ if not (cidades_file and estados_file and pocos_file):
 # ---------------------- Load CSVs ----------------------
 
 try:
-    df_cidades = pd.read_csv(cidades_file, sep=None, engine='python')
-    df_estados = pd.read_csv(estados_file, sep=None, engine='python')
-    df_pocos = pd.read_csv(pocos_file, sep=None, engine='python')
+    df_cidades = pd.read_csv(cidades_file, sep=';', engine='python', encoding='latin1')
+    df_estados = pd.read_csv(estados_file, sep=';', engine='python', encoding='latin1')
+    df_pocos = pd.read_csv(pocos_file, sep=';', engine='python', encoding='latin1')
+   
 except Exception as e:
     st.error(f"Erro ao ler os arquivos CSV: {e}")
     st.stop()

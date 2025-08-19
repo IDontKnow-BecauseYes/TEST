@@ -1,7 +1,5 @@
 streamlit
 pandas
-geopandas
-shapely
+numpy
 folium
 streamlit-folium
-pyproj

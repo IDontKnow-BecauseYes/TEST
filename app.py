@@ -31,7 +31,7 @@ for _, row in df.iterrows():
     popup_text = f"""
     <b>ID: {row.get('id', '')}<br>
     <b>CONTRATO: {row.get('contrato', '')}<br>
-    <b>EMPRESA: {row.get('empresa', '')}<br>
+    <b>EMPRESA:{row.get('empresa', '')}<br>
     <b>ANO: {row.get('ano', '')}
     """
     folium.Marker(

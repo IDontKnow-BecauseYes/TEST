@@ -4,7 +4,7 @@ import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-url_csv = "IDontKnow-BecauseYes/TEST/arquivos/ues-control-2025-10-07.csv"
+url_csv = "https://raw.githubusercontent.com/IDontKnow-BecauseYes/TEST/refs/heads/main/arquivos/ues-control-2025-10-07.csv"
 
 st.title("Mapa de Coordenadas - UES Controle")
 

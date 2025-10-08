@@ -1,28 +1,43 @@
 import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-url_csv = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/arquivos/coordenadas_convertidas.csv"
+url_csv = "IDontKnow-BecauseYes/TEST/arquivos/ues-control-2025-10-07.csv"
 
-st.title("Mapa de Coordenadas")
+st.title("Mapa de Coordenadas - UES Controle")
 
 df = pd.read_csv(url_csv)
-coordenadas_validas = df.dropna(subset=["LAT_DECIMAL", "LONG_DECIMAL"])
 
-if not coordenadas_validas.empty:
-    lat_centro = coordenadas_validas["LAT_DECIMAL"].mean()
-    lon_centro = coordenadas_validas["LONG_DECIMAL"].mean()
+df.columns = df.columns.str.strip().str.lower()
+
+df['latitude'] = pd.to_numeric(df['latitude'].astype(str).str.replace(',', '.'), errors='coerce')
+df['longitude'] = pd.to_numeric(df['longitude'].astype(str).str.replace(',', '.'), errors='coerce')
+
+df = df.dropna(subset=['latitude', 'longitude'])
+
+if not df.empty:
+    lat_centro = df['latitude'].mean()
+    lon_centro = df['longitude'].mean()
 else:
     lat_centro, lon_centro = 0, 0
 
-mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=5)
+m = folium.Map(location=[lat_centro, lon_centro], zoom_start=6)
 
-for idx, row in coordenadas_validas.iterrows():
-    info_html = "<br>".join([f"<b>{col}:</b> {row[col]}" for col in row.index])
+marker_cluster = MarkerCluster().add_to(m)
+
+for _, row in df.iterrows():
+    popup_text = f"""
+    <b>ID: {row.get('id', '')}<br>
+    <b>CONTRATO: {row.get('contrato', '')}<br>
+    <b>EMPRESA: {row.get('empresa', '')}<br>
+    <b>ANO: {row.get('ano', '')}
+    """
     folium.Marker(
-        location=[row["LAT_DECIMAL"], row["LONG_DECIMAL"]],
-        popup=folium.Popup(info_html, max_width=300)
-    ).add_to(mapa)
+        location=[row['latitude'], row['longitude']],
+        popup=popup_text,
+        icon=folium.Icon(color='red')
+    ).add_to(marker_cluster)
 
-st_folium(mapa, width=700, height=500)
+st_folium(m, width=700, height=500)

@@ -3,7 +3,7 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
-st.title("Mapa de Coordenadas")
+st.title("Mapas de bens")
 
 uploaded_file = st.file_uploader("Escolha o arquivo CSV", type="csv")
 

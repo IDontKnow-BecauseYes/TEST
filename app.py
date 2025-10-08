@@ -1,29 +1,43 @@
 import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-st.title("Mapas de bens")
+url_csv = "IDontKnow-BecauseYes/TEST/arquivos/ues-control-2025-10-07.csv"
 
-uploaded_file = st.file_uploader("Escolha o arquivo CSV", type="csv")
+st.title("Mapa de Coordenadas - UES Controle")
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    coordenadas_validas = df.dropna(subset=["LAT_DECIMAL", "LONG_DECIMAL"])
+df = pd.read_csv(url_csv)
 
-    if not coordenadas_validas.empty:
-        lat_centro = coordenadas_validas["LAT_DECIMAL"].mean()
-        lon_centro = coordenadas_validas["LONG_DECIMAL"].mean()
-    else:
-        lat_centro, lon_centro = 0, 0
+df.columns = df.columns.str.strip().str.lower()
 
-    mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=5)
+df['latitude'] = pd.to_numeric(df['latitude'].astype(str).str.replace(',', '.'), errors='coerce')
+df['longitude'] = pd.to_numeric(df['longitude'].astype(str).str.replace(',', '.'), errors='coerce')
 
-    for idx, row in coordenadas_validas.iterrows():
-        info_html = "<br>".join([f"<b>{col}:</b> {row[col]}" for col in row.index])
-        folium.Marker(
-            location=[row["LAT_DECIMAL"], row["LONG_DECIMAL"]],
-            popup=folium.Popup(info_html, max_width=300)
-        ).add_to(mapa)
+df = df.dropna(subset=['latitude', 'longitude'])
 
-    st_folium(mapa, width=700, height=500)
+if not df.empty:
+    lat_centro = df['latitude'].mean()
+    lon_centro = df['longitude'].mean()
+else:
+    lat_centro, lon_centro = 0, 0
+
+m = folium.Map(location=[lat_centro, lon_centro], zoom_start=6)
+
+marker_cluster = MarkerCluster().add_to(m)
+
+for _, row in df.iterrows():
+    popup_text = f"""
+    <b>ID: {row.get('id', '')}<br>
+    <b>CONTRATO: {row.get('contrato', '')}<br>
+    <b>EMPRESA: {row.get('empresa', '')}<br>
+    <b>ANO: {row.get('ano', '')}
+    """
+    folium.Marker(
+        location=[row['latitude'], row['longitude']],
+        popup=popup_text,
+        icon=folium.Icon(color='red')
+    ).add_to(marker_cluster)
+
+st_folium(m, width=700, height=500)

@@ -29,10 +29,10 @@ marker_cluster = MarkerCluster().add_to(m)
 
 for _, row in df.iterrows():
     popup_text = f"""
-    <b>ID: {row.get('id', '')}<br>
-    <b>CONTRATO: {row.get('contrato', '')}<br>
-    <b>EMPRESA:{row.get('empresa', '')}<br>
-    <b>ANO: {row.get('ano', '')}
+    <b>ID:</b> {row.get('id', '')}<br>
+    <b>CONTRATO:</b> {row.get('contrato', '')}<br>
+    <b>EMPRESA:</b> {row.get('empresa', '')}<br>
+    <b>ANO:</b> {row.get('ano', '')}
     """
     folium.Marker(
         location=[row['latitude'], row['longitude']],

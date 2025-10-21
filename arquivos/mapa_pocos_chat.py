@@ -31,7 +31,7 @@ st.set_page_config(
 #genai.configure(api_key=api_key)
 
 # Upload do arquivo CSV
-uploaded_file = Path('data/pocos_localizacao.csv')
+uploaded_file = Path('data/POCOS_CODEVASF.csv')
 
 # Configurações do mapa
 map_style = "OpenStreetMap"

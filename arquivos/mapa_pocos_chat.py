@@ -20,7 +20,7 @@ st.set_page_config(
 #st.markdown("**Carregue um CSV com dados de localização e converse com a IA sobre seus dados!**")
 
 # Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
+#load_dotenv()
 
 # Configura a chave da API do Gemini
 #GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")

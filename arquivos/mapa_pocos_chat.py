@@ -52,26 +52,10 @@ if uploaded_file is not None:
         
         # Criar duas colunas
         col1, col2 = st.columns([3, 1])
-        
-        with col2:
-            st.subheader("📊 Preview")
-            #st.dataframe(df.head(10), use_container_width=True)
-            
-            st.metric("Total de Registros", len(df))
-            
-            # Seleção de colunas
-            #st.subheader("🎯 Selecionar Colunas")
-            #columns = df.columns.tolist()
-            
-            #lat_col = st.selectbox("Coluna de Latitude:", columns, 
-                                  #index=next((i for i, col in enumerate(columns) if 'lat' in col.lower()), 0))
-            #lon_col = st.selectbox("Coluna de Longitude:", columns,
-                                  #index=next((i for i, col in enumerate(columns) if 'lon' in col.lower() or 'lng' in col.lower()), 0))
-            
-            #label_col = st.selectbox("Coluna de Rótulo (opcional):", ['Nenhum'] + columns)
-            lat_col = "LATITUDE_POCOS"
-            lon_col = "LONGITUDE_POCOS"
-            label_col = "CIDADE"
+
+        lat_col = "LATITUDE_POCOS"
+        lon_col = "LONGITUDE_POCOS"
+        label_col = "CIDADE"
         
         with col1:
             st.subheader("🗺️ Localização dos Poços")

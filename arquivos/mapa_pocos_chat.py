@@ -2,10 +2,10 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import pandas as pd
-import google.generativeai as genai
+#import google.generativeai as genai
 from io import StringIO
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from pathlib import Path
 
 # Configuração da página
@@ -23,12 +23,12 @@ st.set_page_config(
 load_dotenv()
 
 # Configura a chave da API do Gemini
-GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GEMINI_API_KEY:
-    st.error("Chave da API GEMINI_API_KEY não encontrada. Certifique-se de que está definida no seu arquivo .env ou como uma variável de ambiente.")
-    st.stop() # Interrompe a execução do Streamlit
-api_key=GEMINI_API_KEY
-genai.configure(api_key=api_key)
+#GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
+#if not GEMINI_API_KEY:
+#    st.error("Chave da API GEMINI_API_KEY não encontrada. Certifique-se de que está definida no seu arquivo .env ou como uma variável de ambiente.")
+#    st.stop() # Interrompe a execução do Streamlit
+#api_key=GEMINI_API_KEY
+#genai.configure(api_key=api_key)
 
 # Upload do arquivo CSV
 uploaded_file = Path('data/pocos_localizacao.csv')

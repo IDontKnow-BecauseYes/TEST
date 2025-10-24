@@ -4,8 +4,8 @@ import folium
 from folium.plugins import MarkerCluster
 import streamlit.components.v1 as components
 
-pocos_file = "pocos_codevasf_limpo.csv"
-mun_file = "municipio_codevasf_limpo.csv"
+pocos_file = "TEST/arquivos/pocos_codevasf_limpo.csv"
+mun_file = "TEST/arquivos/municipio_codevasf_limpo.csv"
 LAT_COL = "LATITUDE_POCOS"
 LON_COL = "LONGITUDE_POCOS"
 informacoes = ["PLANILHA", "ORDEM", "CONTRATO", "LOCALIDADES", "DATA_DE_PERFURACAO", "DATA_DE_INTALACAO", "SITUACAO"]
@@ -65,3 +65,4 @@ st.dataframe(dfp, use_container_width=True)
 
 st.markdown("## DataFrame completo - Municípios")
 st.dataframe(dfm, use_container_width=True)
+

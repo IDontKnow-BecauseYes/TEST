@@ -1,28 +1,59 @@
 import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
+from io import BytesIO
 
-url_csv = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/arquivos/coordenadas_convertidas.csv"
+st.set_page_config(page_title="Mapa de Beneficiários - UES Control", layout="wide")
+st.title("📍 Mapa Interativo de Beneficiários - UES Control")
 
-st.title("Mapa de Coordenadas")
+uploaded_file = st.file_uploader("Envie o arquivo CSV:", type=["csv"])
 
-df = pd.read_csv(url_csv)
-coordenadas_validas = df.dropna(subset=["LAT_DECIMAL", "LONG_DECIMAL"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    
+    if "latitude" not in df.columns or "longitude" not in df.columns:
+        st.error("O arquivo precisa conter as colunas 'latitude' e 'longitude'.")
+    else:
+        m = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
+        marker_cluster = MarkerCluster().add_to(m)
 
-if not coordenadas_validas.empty:
-    lat_centro = coordenadas_validas["LAT_DECIMAL"].mean()
-    lon_centro = coordenadas_validas["LONG_DECIMAL"].mean()
+        for _, row in df.iterrows():
+            popup_text = f"""
+            <b>ANO:</b> {row.get('ano', '')}<br>
+            <b>BEM:</b> {str(row.get('bem', '')).replace('\n', ' ')}<br>
+            <b>PARLAMENTAR:</b> {str(row.get('parlamentar', '')).replace('\n', ' ')}<br>
+            <b>BENEFICIÁRIO:</b> {row.get('beneficiario', '')}<br>
+            <b>MUNICÍPIO:</b> {row.get('municipio', '')}<br>
+            <b>ENTREGUE:</b> {row.get('entrega_realizada_pelo_fornecedor', '')}
+            """
+            folium.Marker(
+                location=[row['latitude'], row['longitude']],
+                popup=folium.Popup(popup_text, max_width=450),
+                icon=folium.Icon(color='red')
+            ).add_to(marker_cluster)
+
+        st_folium(m, width=1200, height=600)
+
+        mapa_html = BytesIO()
+        m.save(mapa_html, close_file=False)
+        st.download_button(
+            label="⬇️ Baixar mapa HTML",
+            data=mapa_html.getvalue(),
+            file_name="mapa_cluster.html",
+            mime="text/html"
+        )
+
+        csv_bytes = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="⬇️ Baixar CSV tratado",
+            data=csv_bytes,
+            file_name="ues-control-tratado.csv",
+            mime="text/csv"
+        )
+
+        with st.expander("📊 Visualizar dados"):
+            st.dataframe(df)
 else:
-    lat_centro, lon_centro = 0, 0
-
-mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=5)
-
-for idx, row in coordenadas_validas.iterrows():
-    info_html = "<br>".join([f"<b>{col}:</b> {row[col]}" for col in row.index])
-    folium.Marker(
-        location=[row["LAT_DECIMAL"], row["LONG_DECIMAL"]],
-        popup=folium.Popup(info_html, max_width=300)
-    ).add_to(mapa)
-
-st_folium(mapa, width=700, height=500)
+    st.info("👆 Envie um arquivo CSV para gerar o mapa e os botões de download.")

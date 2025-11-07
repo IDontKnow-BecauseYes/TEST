@@ -1,59 +1,43 @@
 import streamlit as st
 import pandas as pd
-import folium
-from folium.plugins import MarkerCluster
-from streamlit_folium import st_folium
-from io import BytesIO
 
-st.set_page_config(page_title="Mapa de Beneficiários - UES Control", layout="wide")
-st.title("📍 Mapa Interativo de Beneficiários - UES Control")
+st.set_page_config(layout="wide")
 
-uploaded_file = st.file_uploader("Envie o arquivo CSV:", type=["csv"])
+st.title("Visualização de Dados Filtrados")
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    
-    if "latitude" not in df.columns or "longitude" not in df.columns:
-        st.error("O arquivo precisa conter as colunas 'latitude' e 'longitude'.")
-    else:
-        m = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
-        marker_cluster = MarkerCluster().add_to(m)
+# Upload do arquivo CSV
+uploaded_file = st.file_uploader("Upload do arquivo CSV", type="csv")
 
-        for _, row in df.iterrows():
-            popup_text = f"""
-            <b>ANO:</b> {row.get('ano', '')}<br>
-            <b>BEM:</b> {str(row.get('bem', '')).replace('\n', ' ')}<br>
-            <b>PARLAMENTAR:</b> {str(row.get('parlamentar', '')).replace('\n', ' ')}<br>
-            <b>BENEFICIÁRIO:</b> {row.get('beneficiario', '')}<br>
-            <b>MUNICÍPIO:</b> {row.get('municipio', '')}<br>
-            <b>ENTREGUE:</b> {row.get('entrega_realizada_pelo_fornecedor', '')}
-            """
-            folium.Marker(
-                location=[row['latitude'], row['longitude']],
-                popup=folium.Popup(popup_text, max_width=450),
-                icon=folium.Icon(color='red')
-            ).add_to(marker_cluster)
+# Colunas que devem ser exibidas
+colunas_desejadas = [
+    "of", "empresa", "ano", "bem", "parlamentar", "valor_unit",
+    "municipio", "beneficiario", "entrega_realizada_pelo_fornecedor",
+    "pagamento", "doacao", "entrega_fisica", "baixa",
+    "data_de_entrega", "of_emissao"
+]
 
-        st_folium(m, width=1200, height=600)
+if uploaded_file is not None:
+    # Leitura do CSV
+    df = pd.read_csv(uploaded_file, dtype=str)
 
-        mapa_html = BytesIO()
-        m.save(mapa_html, close_file=False)
+    # Verifica quais colunas existem no arquivo
+    colunas_existentes = [col for col in colunas_desejadas if col in df.columns]
+
+    if colunas_existentes:
+        # Filtra apenas as colunas desejadas existentes
+        df_filtrado = df[colunas_existentes].copy()
+
+        st.markdown("### DataFrame Filtrado")
+        st.dataframe(df_filtrado, use_container_width=True)
+
+        # Botão para download do CSV filtrado
         st.download_button(
-            label="⬇️ Baixar mapa HTML",
-            data=mapa_html.getvalue(),
-            file_name="mapa_cluster.html",
-            mime="text/html"
-        )
-
-        csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="⬇️ Baixar CSV tratado",
-            data=csv_bytes,
-            file_name="ues-control-tratado.csv",
+            label="Baixar CSV Filtrado",
+            data=df_filtrado.to_csv(index=False).encode("utf-8"),
+            file_name="dados_filtrados.csv",
             mime="text/csv"
         )
-
-        with st.expander("📊 Visualizar dados"):
-            st.dataframe(df)
+    else:
+        st.warning("Nenhuma das colunas especificadas foi encontrada no arquivo CSV.")
 else:
-    st.info("👆 Envie um arquivo CSV para gerar o mapa e os botões de download.")
+    st.info("Por favor, faça o upload de um arquivo CSV para visualizar os dados.")

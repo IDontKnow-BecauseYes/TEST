@@ -1,8 +1,5 @@
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
 import folium
 from streamlit_folium import st_folium
 
@@ -22,63 +19,26 @@ colunas_desejadas = [
 ]
 
 if uploaded_file is not None:
-    # Leitura do CSV
+    # Lê o CSV
     df = pd.read_csv(uploaded_file, dtype=str)
 
-    # Verifica quais colunas existem no arquivo
+    # Verifica colunas existentes
     colunas_existentes = [col for col in colunas_desejadas if col in df.columns]
 
     if colunas_existentes:
-        # Filtra apenas as colunas desejadas existentes
+        # Filtra apenas as colunas desejadas
         df_filtrado = df[colunas_existentes].copy()
 
-        # Mapa interativo (usando a coluna "municipio")
-        if "municipio" in df_filtrado.columns:
-            st.markdown("### 🌍 Mapa de Municípios")
+        # --- Mapa fixo (sem geocoding) ---
+        st.markdown("### 🌍 Mapa Interativo (Padrão)")
+        mapa = folium.Map(location=[-14.235, -51.9253], zoom_start=4)  # Centro do Brasil
+        st_folium(mapa, width=1200, height=500)
 
-            geolocator = Nominatim(user_agent="streamlit_app")
-            geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
-
-            # Obtem coordenadas (cacheadas para evitar lentidão)
-            @st.cache_data
-            def obter_coordenadas(municipios):
-                coords = []
-                for municipio in municipios:
-                    try:
-                        loc = geocode(municipio + ", Brasil")
-                        if loc:
-                            coords.append((municipio, loc.latitude, loc.longitude))
-                        else:
-                            coords.append((municipio, None, None))
-                    except:
-                        coords.append((municipio, None, None))
-                return pd.DataFrame(coords, columns=["municipio", "lat", "lon"])
-
-            coords_df = obter_coordenadas(df_filtrado["municipio"].dropna().unique())
-
-            # Junta coordenadas ao dataframe original
-            df_mapa = df_filtrado.merge(coords_df, on="municipio", how="left")
-
-            # Cria o mapa
-            mapa = folium.Map(location=[-14.235, -51.9253], zoom_start=4)
-
-            # Adiciona marcadores
-            for _, row in df_mapa.dropna(subset=["lat", "lon"]).iterrows():
-                popup_text = f"<b>{row['municipio']}</b><br>{row.get('empresa', '')}"
-                folium.Marker(
-                    location=[row["lat"], row["lon"]],
-                    popup=popup_text,
-                    icon=folium.Icon(color="blue", icon="info-sign")
-                ).add_to(mapa)
-
-            # Exibe o mapa
-            st_folium(mapa, width=1200, height=500)
-
-        # Exibe o DataFrame
+        # --- DataFrame abaixo do mapa ---
         st.markdown("### 🧾 DataFrame Filtrado")
         st.dataframe(df_filtrado, use_container_width=True)
 
-        # Botão para download do CSV filtrado
+        # Botão de download
         st.download_button(
             label="Baixar CSV Filtrado",
             data=df_filtrado.to_csv(index=False).encode("utf-8"),

@@ -3,9 +3,10 @@ import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
+import io
 
 st.set_page_config(layout="wide")
-st.title("Mapa com Pinos + DataFrame Abaixo")
+st.title("Mapa com Pinos + DataFrame Abaixo (com download do mapa)")
 
 # Upload do arquivo CSV
 uploaded_file = st.file_uploader("Upload do arquivo CSV", type="csv")
@@ -27,6 +28,8 @@ def achar_coluna(cols, possiveis):
         if p in cols:
             return p
     return None
+
+mapa = None  # será criado quando houver coordenadas ou mapa padrão
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file, dtype=str)
@@ -76,13 +79,24 @@ if uploaded_file is not None:
     st.markdown("### 🧾 DataFrame Filtrado")
     st.dataframe(df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True)
 
-    # Botão de download
+    # Botão de download do CSV
     st.download_button(
         label="Baixar CSV Filtrado",
         data=df_filtrado.to_csv(index=False).encode("utf-8"),
         file_name="dados_filtrados.csv",
         mime="text/csv"
     )
+
+    # --- Botão para baixar o mapa como HTML (aparece só se mapa existir) ---
+    if mapa is not None:
+        html_str = mapa.get_root().render()  # gera o HTML completo do mapa
+        # usa bytes para o download
+        st.download_button(
+            label="Baixar mapa (HTML)",
+            data=html_str.encode("utf-8"),
+            file_name="mapa.html",
+            mime="text/html"
+        )
 
 else:
     st.info("Faça o upload de um arquivo CSV para gerar o mapa e visualizar os dados.")

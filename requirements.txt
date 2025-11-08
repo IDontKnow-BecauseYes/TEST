@@ -1,6 +1,6 @@
 streamlit
 pandas
-numpy
 folium
 streamlit-folium
-geopandas as gpd
+geopy
+geopandas

@@ -54,9 +54,10 @@ if uploaded_pocos is not None:
         mapa = folium.Map(location=[-14.235, -51.9253], zoom_start=4)
         st_folium(mapa, width=1200, height=450)
 
-    # --- DataFrame de Poços Individuais ---
+    # --- DataFrame de Poços Individuais (sem lat/lon) ---
     st.markdown("### 🧾 Poços Individuais")
-    df_individual = df_pocos.drop(columns=["_lat", "_lon"], errors="ignore")
+    colunas_remover = [lat_col, lon_col, "_lat", "_lon"]
+    df_individual = df_pocos.drop(columns=colunas_remover, errors="ignore")
     st.dataframe(df_individual, use_container_width=True)
 
     # --- DataFrame de Poços Totais (agrupados por município/localidade) ---

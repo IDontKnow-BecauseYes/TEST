@@ -75,7 +75,7 @@ if uploaded_pocos is not None:
     # --- Botões de Download ---
     col1, col2, col3 = st.columns(3)
 
-    with col1:
+        with col1:
     buffer_individual = BytesIO()
     df_individual.to_excel(buffer_individual, index=False)
     st.download_button(
@@ -106,4 +106,5 @@ if uploaded_pocos is not None:
 
 else:
     st.info("Faça upload do arquivo CSV de poços para gerar o mapa e os DataFrames.")
+
 

@@ -79,10 +79,12 @@ if uploaded_file is not None:
     st.markdown("### 🧾 DataFrame Filtrado")
     st.dataframe(df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True)
 
+    df_exportação = df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True
+
     # Botão de download do XLSX
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df_filtrado.to_excel(writer, index=False, sheet_name="Dados")
+        df_exportação.to_excel(writer, index=False, sheet_name="Dados")
     buffer.seek(0)
 
     st.download_button(

@@ -76,36 +76,37 @@ if uploaded_pocos is not None:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-    buffer_individual = BytesIO()
-    df_individual.to_excel(buffer_individual, index=False)
-    st.download_button(
-        "⬇️ Baixar Poços Individuais",
-        data=buffer_individual.getvalue(),
-        file_name="pocos_individuais.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        buffer_individual = BytesIO()
+        df_individual.to_excel(buffer_individual, index=False)
+        st.download_button(
+            "⬇️ Baixar Poços Individuais",
+            data=buffer_individual.getvalue(),
+            file_name="pocos_individuais.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     with col2:
-    buffer_totais = BytesIO()
-    df_totais.to_excel(buffer_totais, index=False)
-    st.download_button(
-        "⬇️ Baixar Poços Totais",
-        data=buffer_totais.getvalue(),
-        file_name="pocos_totais.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        buffer_totais = BytesIO()
+        df_totais.to_excel(buffer_totais, index=False)
+        st.download_button(
+            "⬇️ Baixar Poços Totais",
+            data=buffer_totais.getvalue(),
+            file_name="pocos_totais.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     with col3:
-    html_str = mapa.get_root().render()
-    st.download_button(
-        "⬇️ Baixar Mapa",
-        data=html_str.encode("utf-8"),
-        file_name="mapa_pocos.html",
-        mime="text/html"
-    )
+        html_str = mapa.get_root().render()
+        st.download_button(
+            "⬇️ Baixar Mapa",
+            data=html_str.encode("utf-8"),
+            file_name="mapa_pocos.html",
+            mime="text/html"
+        )
 
 else:
     st.info("Faça upload do arquivo CSV de poços para gerar o mapa e os DataFrames.")
+
 
 
 

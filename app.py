@@ -76,29 +76,34 @@ if uploaded_pocos is not None:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.download_button(
-            "⬇️ Baixar Poços Individuais (CSV)",
-            data=df_individual.to_csv(index=False).encode("utf-8"),
-            file_name="pocos_individuais.csv",
-            mime="text/csv"
-        )
+    buffer_individual = BytesIO()
+    df_individual.to_excel(buffer_individual, index=False)
+    st.download_button(
+        "⬇️ Baixar Poços Individuais",
+        data=buffer_individual.getvalue(),
+        file_name="pocos_individuais.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
     with col2:
-        st.download_button(
-            "⬇️ Baixar Poços Totais (CSV)",
-            data=df_totais.to_csv(index=False).encode("utf-8"),
-            file_name="pocos_totais.csv",
-            mime="text/csv"
-        )
+    buffer_totais = BytesIO()
+    df_totais.to_excel(buffer_totais, index=False)
+    st.download_button(
+        "⬇️ Baixar Poços Totais",
+        data=buffer_totais.getvalue(),
+        file_name="pocos_totais.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
     with col3:
-        html_str = mapa.get_root().render()
-        st.download_button(
-            "⬇️ Baixar Mapa (HTML)",
-            data=html_str.encode("utf-8"),
-            file_name="mapa_pocos.html",
-            mime="text/html"
-        )
+    html_str = mapa.get_root().render()
+    st.download_button(
+        "⬇️ Baixar Mapa",
+        data=html_str.encode("utf-8"),
+        file_name="mapa_pocos.html",
+        mime="text/html"
+    )
 
 else:
     st.info("Faça upload do arquivo CSV de poços para gerar o mapa e os DataFrames.")
+

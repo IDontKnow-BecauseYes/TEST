@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 import io
 
 st.set_page_config(layout="wide")
-st.title("Mapa com Pinos + DataFrame Abaixo (com download do mapa)")
+st.title("Mapa com Pinos + DataFrame Abaixo (com download do mapa e XLSX)")
 
 # Upload do arquivo CSV
 uploaded_file = st.file_uploader("Upload do arquivo CSV", type="csv")
@@ -69,7 +69,6 @@ if uploaded_file is not None:
             st_folium(mapa, width=1200, height=550)
 
     else:
-        # Caso não haja lat/lon
         st.warning("Seu CSV não contém colunas de latitude/longitude reconhecidas (ex.: lat, lon, latitude, longitude).")
         mapa = folium.Map(location=[-14.235, -51.9253], zoom_start=4)
         st.markdown("### 🌍 Mapa Padrão (sem pinos)")
@@ -79,18 +78,22 @@ if uploaded_file is not None:
     st.markdown("### 🧾 DataFrame Filtrado")
     st.dataframe(df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True)
 
-    # Botão de download do CSV
+    # --- Botão para baixar o XLSX ---
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df_filtrado.to_excel(writer, index=False, sheet_name="Dados")
+    buffer.seek(0)
+
     st.download_button(
-        label="Baixar CSV Filtrado",
-        data=df_filtrado.to_csv(index=False).encode("utf-8"),
-        file_name="dados_filtrados.csv",
-        mime="text/csv"
+        label="Baixar XLSX Filtrado",
+        data=buffer,
+        file_name="dados_filtrados.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
     # --- Botão para baixar o mapa como HTML (aparece só se mapa existir) ---
     if mapa is not None:
-        html_str = mapa.get_root().render()  # gera o HTML completo do mapa
-        # usa bytes para o download
+        html_str = mapa.get_root().render()
         st.download_button(
             label="Baixar mapa (HTML)",
             data=html_str.encode("utf-8"),

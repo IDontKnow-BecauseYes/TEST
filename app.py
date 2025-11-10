@@ -79,7 +79,7 @@ if uploaded_file is not None:
     st.markdown("### 🧾 DataFrame Filtrado")
     st.dataframe(df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True)
 
-    df_exportação = df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore'), use_container_width=True
+    df_exportação = df_filtrado.drop(columns=['_lat', '_lon'], errors='ignore')
 
     # Botão de download do XLSX
     buffer = io.BytesIO()

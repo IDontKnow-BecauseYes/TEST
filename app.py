@@ -3,6 +3,7 @@ import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
+from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("Mapa e DataFrames de Poços")
@@ -106,6 +107,7 @@ if uploaded_pocos is not None:
 
 else:
     st.info("Faça upload do arquivo CSV de poços para gerar o mapa e os DataFrames.")
+
 
 
 

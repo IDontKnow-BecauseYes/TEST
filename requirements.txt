@@ -4,3 +4,5 @@ numpy
 folium
 streamlit-folium
 openpyxl
+xlsxwriter
+

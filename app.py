@@ -19,9 +19,9 @@ st.set_page_config(page_title="Infraestrutura — Mapas e Tabelas", layout="wide
 
 # Paths locais (fornecidos pelo usuário / upload)
 PATHS = {
-    "Antes de 2023": "/mnt/data/INFRAESTRUTURA_antes_de_2023.xlsx",
-    "Depois de 2023": "/mnt/data/INFRAESTRUTURA_depois_de_2023.xlsx",
-    "Total": "/mnt/data/INFRAESTRUTURA_total.xlsx",
+    "Antes de 2023": "arquivos/INFRAESTRUTURA_antes_de_2023.xlsx",
+    "Depois de 2023": "arquivos/INFRAESTRUTURA_depois_de_2023.xlsx",
+    "Total": "arquivos/INFRAESTRUTURA_total.xlsx",
 }
 
 @st.cache_data
@@ -159,3 +159,4 @@ with col2:
 
 st.markdown("---")
 st.write("Observações: \n- O mapa usa as colunas que contenham 'lat' e 'lon' no nome.\n- O download inclui somente as colunas que você marcou como visíveis.\n- Se quiser que latitude/longitude também sejam baixadas, marque-as como visíveis.")
+

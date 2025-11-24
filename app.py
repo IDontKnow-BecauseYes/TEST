@@ -1,114 +1,161 @@
+# Streamlit app — Infraestrutura (antes, depois, total)
+# Cria 3 caixas (alternador), cada uma com:
+# - mapa com marcações (Latitude/Longitude)
+# - data editor (editável)
+# - seletor de colunas visíveis
+# - botão de download que baixa somente as colunas visíveis
+# Arquivos usados (já enviados):
+# /mnt/data/INFRAESTRUTURA_antes_de_2023.xlsx
+# /mnt/data/INFRAESTRUTURA_depois_de_2023.xlsx
+# /mnt/data/INFRAESTRUTURA_total.xlsx
+
 import streamlit as st
 import pandas as pd
-import folium
-from folium.plugins import MarkerCluster
-from streamlit_folium import st_folium
+import pydeck as pdk
+import io
 from io import BytesIO
 
-st.set_page_config(layout="wide")
-st.title("Mapa e DataFrames de Poços")
+st.set_page_config(page_title="Infraestrutura — Mapas e Tabelas", layout="wide")
 
-# Upload do arquivo de poços
-uploaded_pocos = st.file_uploader("Upload do arquivo de poços (CSV)", type="csv", key="pocos")
+# Paths locais (fornecidos pelo usuário / upload)
+PATHS = {
+    "Antes de 2023": "/mnt/data/INFRAESTRUTURA_antes_de_2023.xlsx",
+    "Depois de 2023": "/mnt/data/INFRAESTRUTURA_depois_de_2023.xlsx",
+    "Total": "/mnt/data/INFRAESTRUTURA_total.xlsx",
+}
 
-if uploaded_pocos is not None:
-    # Lê o CSV
-    df_pocos = pd.read_csv(uploaded_pocos, dtype=str)
+@st.cache_data
+def read_excel(path):
+    try:
+        return pd.read_excel(path)
+    except Exception as e:
+        st.error(f"Erro ao ler {path}: {e}")
+        return pd.DataFrame()
 
-    # Nomes fixos de colunas esperadas
-    lat_col = "LATITUDE_POCOS"
-    lon_col = "LONGITUDE_POCOS"
-    municipio_col = "LOCALIDADES"
 
-    # Converte coordenadas
-    df_pocos["_lat"] = pd.to_numeric(df_pocos[lat_col].astype(str).str.replace(",", "."), errors="coerce")
-    df_pocos["_lon"] = pd.to_numeric(df_pocos[lon_col].astype(str).str.replace(",", "."), errors="coerce")
+def find_coord_cols(df):
+    # procura colunas que contenham lat/lon (case-insensitive)
+    cols = {c.lower(): c for c in df.columns}
+    lat_candidates = [c for c in df.columns if 'lat' in c.lower()]
+    lon_candidates = [c for c in df.columns if 'lon' in c.lower() or 'long' in c.lower()]
+    lat_col = lat_candidates[0] if lat_candidates else None
+    lon_col = lon_candidates[0] if lon_candidates else None
+    return lat_col, lon_col
 
-    # Filtra linhas válidas
-    pontos = df_pocos.dropna(subset=["_lat", "_lon"]).copy()
 
-    # --- Mapa ---
-    if len(pontos) > 0:
-        centro_lat = pontos["_lat"].mean()
-        centro_lon = pontos["_lon"].mean()
-        mapa = folium.Map(location=[centro_lat, centro_lon], zoom_start=6)
-        cluster = MarkerCluster().add_to(mapa)
+def to_excel_bytes(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    processed_data = output.getvalue()
+    return processed_data
 
-        # Adiciona marcadores
-        for _, row in pontos.iterrows():
-            popup_text = f"""
-            <b>Localidade:</b> {row.get('LOCALIDADES', '')}<br>
-            <b>Situação:</b> {row.get('SITUACAO', '')}<br>
-            <b>Data perfuração:</b> {row.get('DATA_DE_PERFURACAO', '')}<br>
-            <b>Data instalação:</b> {row.get('DATA_DE_INSTALACAO', '')}
-            """
-            folium.Marker(
-                location=[row["_lat"], row["_lon"]],
-                popup=popup_text,
-                icon=folium.Icon(color="blue", icon="tint")
-            ).add_to(cluster)
 
-        st.markdown("### 🌍 Mapa de Poços")
-        st_folium(mapa, width=1200, height=550)
+st.title("Infraestrutura — mapas e tabelas")
+st.write("Escolha um dos conjuntos de dados e trabalhe nos mapas e tabelas. Download baixa apenas as colunas visíveis.")
+
+# Selector: três caixas que alternam entre os arquivos
+choice = st.selectbox("Selecionar conjunto", list(PATHS.keys()))
+
+# Carrega
+df = read_excel(PATHS[choice])
+
+if df.empty:
+    st.stop()
+
+# Detecta colunas de coordenadas
+lat_col, lon_col = find_coord_cols(df)
+if not lat_col or not lon_col:
+    st.warning("Não foi encontrada coluna de Latitude/Longitude automaticamente. Certifique-se de que existam colunas contendo 'lat' e 'lon' no nome.")
+
+# forçar numérico
+if lat_col:
+    df[lat_col] = pd.to_numeric(df[lat_col], errors='coerce')
+if lon_col:
+    df[lon_col] = pd.to_numeric(df[lon_col], errors='coerce')
+
+# coluna para edição — mostrar todas por padrão
+st.sidebar.header("Configurações")
+show_index = st.sidebar.checkbox("Mostrar índice na tabela", value=False)
+
+# Data editor (editável) — Streamlit >=1.22 possui st.data_editor
+st.subheader(f"{choice}")
+with st.expander("Tabela editável", expanded=True):
+    # usa data_editor para edição inline
+    try:
+        edited = st.data_editor(df, num_rows="dynamic")
+    except Exception:
+        # fallback para st.experimental_data_editor
+        edited = st.experimental_data_editor(df, num_rows="dynamic")
+
+# Seleção de colunas visíveis
+all_columns = list(edited.columns)
+visible_columns = st.multiselect("Colunas visíveis (serão as colunas baixadas):", all_columns, default=all_columns)
+
+# Área do mapa e tabela lado-a-lado
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.markdown("**Mapa**")
+    # preparar dados para mapa
+    map_df = edited.copy()
+    if lat_col and lon_col:
+        map_points = map_df.dropna(subset=[lat_col, lon_col])
+        if not map_points.empty:
+            # pydeck exige que as coordenadas sejam [lon, lat]
+            midpoint = (map_points[lat_col].mean(), map_points[lon_col].mean())
+            # usa ScatterplotLayer
+            tooltip_fields = visible_columns[:6] if visible_columns else list(map_points.columns[:6])
+            tooltip_html_parts = [f"<b>{col}:</b> {{{col}}}" for col in tooltip_fields if col not in [lat_col, lon_col]]
+            tooltip_html = "<br>".join(tooltip_html_parts) if tooltip_html_parts else "{index}"
+
+            layer = pdk.Layer(
+                "ScatterplotLayer",
+                data=map_points,
+                get_position=f"[{lon_col}, {lat_col}]",
+                get_radius=200,
+                pickable=True,
+                auto_highlight=True,
+            )
+
+            tooltip = {"html": tooltip_html}
+
+            view_state = pdk.ViewState(
+                longitude=map_points[lon_col].mean(),
+                latitude=map_points[lat_col].mean(),
+                zoom=10,
+                pitch=0,
+            )
+
+            r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
+            st.pydeck_chart(r)
+        else:
+            st.info("Não há pontos com coordenadas válidas para mostrar no mapa.")
     else:
-        st.warning("Nenhuma coordenada válida encontrada nas colunas LATITUDE_POCOS e LONGITUDE_POCOS.")
-        mapa = folium.Map(location=[-14.235, -51.9253], zoom_start=4)
-        st_folium(mapa, width=1200, height=450)
+        st.info("Colunas de Latitude/Longitude não disponíveis; não é possível gerar mapa.")
 
-    # --- DataFrame de Poços Individuais (sem lat/lon) ---
-    st.markdown("### 🧾 Poços Individuais")
-    colunas_remover = [lat_col, lon_col, "_lat", "_lon"]
-    df_individual = df_pocos.drop(columns=colunas_remover, errors="ignore")
-    st.dataframe(df_individual, use_container_width=True)
+with col2:
+    st.markdown("**Tabela (apenas colunas visíveis serão baixadas)**")
+    display_df = edited.copy()
+    if not show_index:
+        st.dataframe(display_df[visible_columns] if visible_columns else display_df)
+    else:
+        st.dataframe(display_df[visible_columns] if visible_columns else display_df)
 
-    # --- DataFrame de Poços Totais (agrupados por município/localidade) ---
-    st.markdown("### 📌 Poços Totais por Município")
-    df_totais = (
-        df_pocos.groupby(municipio_col)
-        .size()
-        .reset_index(name="quant_pocos")
-        .rename(columns={municipio_col: "municipio"})
-        .sort_values("quant_pocos", ascending=False)
-        .reset_index(drop=True)
-    )
-    st.dataframe(df_totais, use_container_width=True)
+    # Downloads
+    col_download_1, col_download_2 = st.columns(2)
+    with col_download_1:
+        csv_bytes = (display_df[visible_columns].to_csv(index=False).encode('utf-8')) if visible_columns else display_df.to_csv(index=False).encode('utf-8')
+        st.download_button(label="Baixar CSV (colunas visíveis)",
+                           data=csv_bytes,
+                           file_name=f"{choice.replace(' ', '_').lower()}_visiveis.csv",
+                           mime='text/csv')
+    with col_download_2:
+        excel_bytes = to_excel_bytes(display_df[visible_columns]) if visible_columns else to_excel_bytes(display_df)
+        st.download_button(label="Baixar XLSX (colunas visíveis)",
+                           data=excel_bytes,
+                           file_name=f"{choice.replace(' ', '_').lower()}_visiveis.xlsx",
+                           mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-    # --- Botões de Download ---
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        buffer_individual = BytesIO()
-        df_individual.to_excel(buffer_individual, index=False)
-        st.download_button(
-            "⬇️ Baixar Poços Individuais",
-            data=buffer_individual.getvalue(),
-            file_name="pocos_individuais.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    with col2:
-        buffer_totais = BytesIO()
-        df_totais.to_excel(buffer_totais, index=False)
-        st.download_button(
-            "⬇️ Baixar Poços Totais",
-            data=buffer_totais.getvalue(),
-            file_name="pocos_totais.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    with col3:
-        html_str = mapa.get_root().render()
-        st.download_button(
-            "⬇️ Baixar Mapa",
-            data=html_str.encode("utf-8"),
-            file_name="mapa_pocos.html",
-            mime="text/html"
-        )
-
-else:
-    st.info("Faça upload do arquivo CSV de poços para gerar o mapa e os DataFrames.")
-
-
-
-
-
+st.markdown("---")
+st.write("Observações: \n- O mapa usa as colunas que contenham 'lat' e 'lon' no nome.\n- O download inclui somente as colunas que você marcou como visíveis.\n- Se quiser que latitude/longitude também sejam baixadas, marque-as como visíveis.")

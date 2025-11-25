@@ -8,13 +8,20 @@ import io
 st.set_page_config(layout="wide")
 st.title("Mapa — INFRAESTRUTURA_total")
 
-# Caminho fixo do arquivo
-FILE_PATH = "arquivos/datas_maior_igual_2023.xlsx"
+# ---------------------------------------------------------
+# UPLOAD DO ARQUIVO
+# ---------------------------------------------------------
+arquivo = st.file_uploader("Envie o arquivo Excel", type=["xlsx"])
+
+if arquivo is None:
+    st.warning("Envie o arquivo para continuar.")
+    st.stop()
 
 # ---------------------------------------------------------
 # LER O ARQUIVO
 # ---------------------------------------------------------
-df = pd.read_excel(FILE_PATH, dtype=str)
+df = pd.read_excel(arquivo, dtype=str)
+
 # Normalizar nomes de colunas
 df.columns = df.columns.str.strip().str.lower()
 
@@ -35,8 +42,12 @@ lon_col = achar_coluna(df.columns, POSSIVEIS_LON)
 # MAPA
 # ---------------------------------------------------------
 if lat_col and lon_col:
-    df["_lat"] = pd.to_numeric(df[lat_col].astype(str).str.replace(",", "."), errors="coerce")
-    df["_lon"] = pd.to_numeric(df[lon_col].astype(str).str.replace(",", "."), errors="coerce")
+    df["_lat"] = pd.to_numeric(
+        df[lat_col].astype(str).str.replace(",", "."), errors="coerce"
+    )
+    df["_lon"] = pd.to_numeric(
+        df[lon_col].astype(str).str.replace(",", "."), errors="coerce"
+    )
 
     pontos = df.dropna(subset=["_lat", "_lon"])
 
@@ -53,13 +64,17 @@ if lat_col and lon_col:
 
     for _, row in pontos.iterrows():
         popup_text = "<br>".join(
-            [f"<b>{col.upper()}:</b> {row[col]}" for col in popup_cols if pd.notna(row[col])]
+            [
+                f"<b>{col.upper()}:</b> {row[col]}"
+                for col in popup_cols
+                if col in df.columns and pd.notna(row[col])
+            ]
         )
 
         folium.Marker(
             location=[row["_lat"], row["_lon"]],
             popup=popup_text or "Sem dados",
-            icon=folium.Icon(color="blue", icon="info-sign")
+            icon=folium.Icon(color="blue", icon="info-sign"),
         ).add_to(cluster)
 
     st.markdown("### 🌍 Mapa — INFRAESTRUTURA_total")
@@ -90,7 +105,7 @@ st.download_button(
     "Baixar XLSX",
     buffer,
     file_name="INFRAESTRUTURA_total.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 )
 
 # HTML do mapa
@@ -100,13 +115,5 @@ if mapa:
         "Baixar mapa em HTML",
         html_mapa.encode("utf-8"),
         file_name="mapa_infraestrutura_total.html",
-        mime="text/html"
+        mime="text/html",
     )
-
-
-
-
-
-
-
-

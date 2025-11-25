@@ -9,7 +9,7 @@ st.set_page_config(layout="wide")
 st.title("Mapa — INFRAESTRUTURA_total")
 
 # Caminho fixo do arquivo
-FILE_PATH = "arquivos/INFRAESTRUTURA_total.xlsx"
+FILE_PATH = "arquivos/datas_maior_igual_2023.xlsx"
 
 # ---------------------------------------------------------
 # LER O ARQUIVO
@@ -107,6 +107,7 @@ if mapa:
         file_name="mapa_infraestrutura_total.html",
         mime="text/html"
     )
+
 
 
 

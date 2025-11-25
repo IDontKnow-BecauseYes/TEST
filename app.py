@@ -14,8 +14,7 @@ FILE_PATH = "arquivos/datas_maior_igual_2023.xlsx"
 # ---------------------------------------------------------
 # LER O ARQUIVO
 # ---------------------------------------------------------
-try:
-    df = pd.read_excel(FILE_PATH, dtype=str)
+df = pd.read_excel(FILE_PATH, dtype=str)
 # Normalizar nomes de colunas
 df.columns = df.columns.str.strip().str.lower()
 
@@ -103,6 +102,7 @@ if mapa:
         file_name="mapa_infraestrutura_total.html",
         mime="text/html"
     )
+
 
 
 

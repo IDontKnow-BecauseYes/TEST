@@ -54,7 +54,7 @@ if lat_col and lon_col:
     mapa = folium.Map(location=[centro_lat, centro_lon], zoom_start=6)
     cluster = MarkerCluster().add_to(mapa)
 
-    popup_cols = ["id", "objeto", "municipios"]
+    popup_cols = ["id", "municipios"]
 
     for _, row in pontos.iterrows():
         popup_text = "<br>".join(
@@ -107,4 +107,5 @@ if mapa:
         file_name="mapa_infraestrutura_total.html",
         mime="text/html"
     )
+
 

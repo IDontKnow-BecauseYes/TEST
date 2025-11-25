@@ -7,11 +7,10 @@ from io import BytesIO
 
 st.set_page_config(page_title="Infraestrutura — Mapas e Tabelas", layout="wide")
 
-PATHS = {
-    "Antes de 2023": "arquivos/INFRAESTRUTURA_antes_de_2023.xlsx",
-    "Depois de 2023": "arquivos/INFRAESTRUTURA_depois_de_2023.xlsx",
-    "Total": "arquivos/INFRAESTRUTURA_total.xlsx",
-}
+# ---------------------------------------------------------
+# APENAS UM ARQUIVO AGORA
+# ---------------------------------------------------------
+FILE_PATH = "arquivos/INFRAESTRUTURA_total.xlsx"
 
 @st.cache_data
 def read_excel(path):
@@ -34,10 +33,14 @@ def to_excel_bytes(df):
 
 st.title("Infraestrutura — mapas e tabelas")
 
-choice = st.selectbox("Selecionar conjunto", list(PATHS.keys()))
+# ---------------------------------------------------------
+# REMOVIDO SELECTBOX — AGORA SEM ESCOLHA
+# ---------------------------------------------------------
+choice = "INFRAESTRUTURA_total"
 
-df = read_excel(PATHS[choice])
+df = read_excel(FILE_PATH)
 if df.empty:
+    st.error("Arquivo INFRAESTRUTURA_total.xlsx não encontrado ou vazio.")
     st.stop()
 
 lat_col, lon_col = find_coord_cols(df)
@@ -91,7 +94,7 @@ with col1:
         st.info("Arquivo não possui colunas de latitude/longitude.")
 
 # ---------------------------------------------------------
-# TABELA + DOWNLOAD
+# TABELA + DOWNLOADS
 # ---------------------------------------------------------
 with col2:
     st.markdown("**Tabela filtrada**")
@@ -103,14 +106,13 @@ with col2:
     st.download_button(
         "Baixar CSV (visíveis)",
         csv_bytes,
-        file_name=f"{choice.replace(' ', '_').lower()}_visiveis.csv",
+        file_name="infraestrutura_total_visiveis.csv",
         mime="text/csv"
     )
 
     st.download_button(
         "Baixar XLSX (visíveis)",
         excel_bytes,
-        file_name=f"{choice.replace(' ', '_').lower()}_visiveis.xlsx",
+        file_name="infraestrutura_total_visiveis.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-

@@ -83,7 +83,7 @@ st.dataframe(df.drop(columns=["_lat", "_lon"], errors="ignore"), use_container_w
 # ---------------------------------------------------------
 # DOWNLOADS
 # ---------------------------------------------------------
-df_exporta = df.drop(columns=["_lat", "_lon", lat_col, lon_col],, errors="ignore")
+df_exporta = df.drop(columns=["_lat", "_lon", lat_col, lon_col], errors="ignore")
 
 # XLSX
 buffer = io.BytesIO()
@@ -107,6 +107,7 @@ if mapa:
         file_name="mapa_infraestrutura_total.html",
         mime="text/html"
     )
+
 
 
 

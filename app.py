@@ -15,9 +15,9 @@ FILE_PATH = "arquivos/datas_maior_igual_2023.xlsx"
 # LER O ARQUIVO
 # ---------------------------------------------------------
 try:
-    df = pd.read_excel(FILE_PATH,)
+    df = pd.read_excel(FILE_PATH, dtype=str)
 except:
-    st.error("Erro ao carregar INFRAESTRUTURA_total.xlsx")
+    st.error("Erro 404")
     st.stop()
 
 # Normalizar nomes de colunas

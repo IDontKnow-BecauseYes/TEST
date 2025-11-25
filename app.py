@@ -15,7 +15,7 @@ FILE_PATH = "arquivos/datas_maior_igual_2023.xlsx"
 # LER O ARQUIVO
 # ---------------------------------------------------------
 try:
-    df = pd.read_excel(FILE_PATH, dtype=str)
+    df = pd.read_excel(FILE_PATH,)
 except:
     st.error("Erro ao carregar INFRAESTRUTURA_total.xlsx")
     st.stop()
@@ -107,6 +107,7 @@ if mapa:
         file_name="mapa_infraestrutura_total.html",
         mime="text/html"
     )
+
 
 
 

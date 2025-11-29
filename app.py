@@ -9,9 +9,9 @@ st.set_page_config(layout="wide")
 st.title("Mapa — INFRAESTRUTURA_total")
 
 # ---------------------------------------------------------
-# UPLOAD DO ARQUIVO
+# UPLOAD DO ARQUIVO (CSV ou XLSX)
 # ---------------------------------------------------------
-arquivo = st.file_uploader("Envie o arquivo Excel", type=["xlsx"])
+arquivo = st.file_uploader("Envie o arquivo CSV ou Excel", type=["csv", "xlsx"])
 
 if arquivo is None:
     st.warning("Envie o arquivo para continuar.")
@@ -20,7 +20,15 @@ if arquivo is None:
 # ---------------------------------------------------------
 # LER O ARQUIVO
 # ---------------------------------------------------------
-df = pd.read_excel(arquivo, dtype=str)
+extensao = arquivo.name.split(".")[-1].lower()
+
+if extensao == "csv":
+    df = pd.read_csv(arquivo, dtype=str)
+elif extensao == "xlsx":
+    df = pd.read_excel(arquivo, dtype=str)
+else:
+    st.error("Formato não suportado.")
+    st.stop()
 
 # Normalizar nomes de colunas
 df.columns = df.columns.str.strip().str.lower()

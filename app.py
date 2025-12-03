@@ -13,16 +13,28 @@ st.title("Mapa e Dados – IRRIGACAO")
 # ========================
 arquivo = st.file_uploader("Envie o arquivo IRRIGACAO.csv", type=["csv"])
 
+def ler_csv_seguro(arquivo):
+    separadores = [",", ";", "\t", "|"]
+    for sep in separadores:
+        try:
+            df = pd.read_csv(arquivo, sep=sep)
+            if df.shape[1] > 1:
+                return df
+        except:
+            pass
+    st.error("Não foi possível ler o CSV. Verifique o formato.")
+    st.stop()
+
 if arquivo:
     # ========================
     # LEITURA SEGURA DO CSV
     # ========================
-    df = pd.read_csv(arquivo, sep=None, engine="python")
+    df = ler_csv_seguro(arquivo)
 
     st.write("Colunas encontradas:", df.columns.tolist())
 
     # ========================
-    # DETECTAR LAT/LON
+    # DETECTAR LATITUDE / LONGITUDE
     # ========================
     possiveis_lat = ["latitude", "lat", "Latitude", "LAT", "Lat"]
     possiveis_lon = ["longitude", "lon", "Longitude", "LON", "Long"]
@@ -56,7 +68,7 @@ if arquivo:
         ).add_to(mc)
 
     st.subheader("Mapa")
-    mapa_render = st_folium(m, width=800, height=500)
+    st_folium(m, width=800, height=500)
 
     # ========================
     # MOSTRAR DATAFRAME

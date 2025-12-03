@@ -3,125 +3,58 @@ import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
-import io
+from io import BytesIO
 
 st.set_page_config(layout="wide")
-st.title("Mapa — INFRAESTRUTURA_total")
 
-# ---------------------------------------------------------
-# UPLOAD DO ARQUIVO (CSV ou XLSX)
-# ---------------------------------------------------------
-arquivo = st.file_uploader("Envie o arquivo CSV ou Excel", type=["csv", "xlsx"])
+st.title("Mapa e Dados – IRRIGACAO")
 
-if arquivo is None:
-    st.warning("Envie o arquivo para continuar.")
-    st.stop()
+# --- Carregar arquivo ---
+df = pd.read_csv("IRRIGACAO.csv")
 
-# ---------------------------------------------------------
-# LER O ARQUIVO
-# ---------------------------------------------------------
-extensao = arquivo.name.split(".")[-1].lower()
+# --- Criar mapa ---
+lat_med = df["latitude"].mean()
+lon_med = df["longitude"].mean()
 
-if extensao == "csv":
-    df = pd.read_csv(arquivo, dtype=str)
-elif extensao == "xlsx":
-    df = pd.read_excel(arquivo, dtype=str)
-else:
-    st.error("Formato não suportado.")
-    st.stop()
+m = folium.Map(location=[lat_med, lon_med], zoom_start=10)
+mc = MarkerCluster().add_to(m)
 
-# Normalizar nomes de colunas
-df.columns = df.columns.str.strip().str.lower()
+for _, row in df.iterrows():
+    folium.Marker(
+        [row["latitude"], row["longitude"]],
+        popup=str(row.to_dict())
+    ).add_to(mc)
 
-# Possíveis nomes de latitude/longitude
-POSSIVEIS_LAT = ["lat", "latitude", "coord_lat", "coordenada_lat"]
-POSSIVEIS_LON = ["lon", "longitude", "lng", "coord_lon", "coordenada_lon"]
+# Renderizar
+st.subheader("Mapa")
+map_data = st_folium(m, width=800, height=500)
 
-def achar_coluna(cols, possiveis):
-    for p in possiveis:
-        if p in cols:
-            return p
-    return None
+# --- Mostrar DataFrame ---
+st.subheader("DataFrame")
+st.dataframe(df)
 
-lat_col = achar_coluna(df.columns, POSSIVEIS_LAT)
-lon_col = achar_coluna(df.columns, POSSIVEIS_LON)
+# --- Botões lado a lado ---
+col1, col2 = st.columns(2)
 
-# ---------------------------------------------------------
-# MAPA
-# ---------------------------------------------------------
-if lat_col and lon_col:
-    df["_lat"] = pd.to_numeric(
-        df[lat_col].astype(str).str.replace(",", "."), errors="coerce"
-    )
-    df["_lon"] = pd.to_numeric(
-        df[lon_col].astype(str).str.replace(",", "."), errors="coerce"
+with col1:
+    # Exportar HTML
+    html_str = m.get_root().render()
+    col1.download_button(
+        label="Baixar Mapa (HTML)",
+        data=html_str,
+        file_name="mapa.html",
+        mime="text/html"
     )
 
-    pontos = df.dropna(subset=["_lat", "_lon"])
+with col2:
+    # Exportar XLSX
+    buffer = BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
 
-    if not pontos.empty:
-        centro_lat = pontos["_lat"].mean()
-        centro_lon = pontos["_lon"].mean()
-    else:
-        centro_lat, centro_lon = 0, 0
-
-    mapa = folium.Map(location=[centro_lat, centro_lon], zoom_start=6)
-    cluster = MarkerCluster().add_to(mapa)
-
-    popup_cols = ["id", "municipios"]
-
-    for _, row in pontos.iterrows():
-        popup_text = "<br>".join(
-            [
-                f"<b>{col.upper()}:</b> {row[col]}"
-                for col in popup_cols
-                if col in df.columns and pd.notna(row[col])
-            ]
-        )
-
-        folium.Marker(
-            location=[row["_lat"], row["_lon"]],
-            popup=popup_text or "Sem dados",
-            icon=folium.Icon(color="blue", icon="info-sign"),
-        ).add_to(cluster)
-
-    st.markdown("### 🌍 Mapa — INFRAESTRUTURA_total")
-    st_folium(mapa, width=1200, height=550)
-
-else:
-    st.warning("O arquivo não possui colunas de latitude/longitude reconhecidas.")
-    mapa = None
-
-# ---------------------------------------------------------
-# DATAFRAME
-# ---------------------------------------------------------
-st.markdown("### 🧾 Tabela Completa — INFRAESTRUTURA_total")
-st.dataframe(df.drop(columns=["_lat", "_lon"], errors="ignore"), use_container_width=True)
-
-# ---------------------------------------------------------
-# DOWNLOADS
-# ---------------------------------------------------------
-df_exporta = df.drop(columns=["_lat", "_lon", lat_col, lon_col], errors="ignore")
-
-# XLSX
-buffer = io.BytesIO()
-with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-    df_exporta.to_excel(writer, index=False, sheet_name="Dados")
-buffer.seek(0)
-
-st.download_button(
-    "Baixar XLSX",
-    buffer,
-    file_name="INFRAESTRUTURA_total.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-)
-
-# HTML do mapa
-if mapa:
-    html_mapa = mapa.get_root().render()
-    st.download_button(
-        "Baixar mapa em HTML",
-        html_mapa.encode("utf-8"),
-        file_name="mapa_infraestrutura_total.html",
-        mime="text/html",
+    col2.download_button(
+        label="Baixar DataFrame (XLSX)",
+        data=buffer,
+        file_name="dados.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

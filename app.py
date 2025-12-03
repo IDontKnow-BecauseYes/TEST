@@ -13,15 +13,26 @@ st.title("Mapa e Dados – IRRIGACAO")
 df = st.file_uploader("Envie o arquivo IRRIGACAO.csv", type=["csv"])
 
 # --- Criar mapa ---
-lat_med = df["latitude"].mean()
-lon_med = df["longitude"].mean()
+possiveis_lat = ["latitude", "lat", "Latitude", "LAT", "Latitude_GRAUS"]
+possiveis_lon = ["longitude", "lon", "Longitude", "LON", "Longitude_GRAUS"]
+
+col_lat = next((c for c in df.columns if c in possiveis_lat), None)
+col_lon = next((c for c in df.columns if c in possiveis_lon), None)
+
+if not col_lat or not col_lon:
+    st.error("As colunas de latitude e longitude não foram encontradas.")
+    st.write("Colunas disponíveis:", df.columns.tolist())
+    st.stop()
+
+lat_med = df[col_lat].mean()
+lon_med = df[col_lon].mean()
 
 m = folium.Map(location=[lat_med, lon_med], zoom_start=10)
 mc = MarkerCluster().add_to(m)
 
 for _, row in df.iterrows():
     folium.Marker(
-        [row["latitude"], row["longitude"]],
+        [row[col_lat], row[col_lon]],
         popup=str(row.to_dict())
     ).add_to(mc)
 
@@ -58,4 +69,5 @@ with col2:
         file_name="dados.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 

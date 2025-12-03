@@ -10,7 +10,7 @@ st.set_page_config(layout="wide")
 st.title("Mapa e Dados – IRRIGACAO")
 
 # --- Carregar arquivo ---
-df = pd.read_csv("IRRIGACAO.csv")
+df = st.file_uploader("Envie o arquivo IRRIGACAO.csv", type=["csv"])
 
 # --- Criar mapa ---
 lat_med = df["latitude"].mean()
@@ -58,3 +58,4 @@ with col2:
         file_name="dados.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+

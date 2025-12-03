@@ -2,142 +2,93 @@ import streamlit as st
 import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 from io import BytesIO
 
-st.set_page_config(layout="wide")
-st.title("Mapa e Dados – IRRIGACAO")
+st.set_page_config(page_title="Mapa de Irrigação", layout="wide")
 
-# ---------------------
-# upload
-# ---------------------
-arquivo = st.file_uploader("Envie o arquivo IRRIGACAO.csv", type=["csv"])
+st.title("Mapa – IRRIGACAO.csv")
 
-def ler_csv_seguro(uploaded):
-    separadores = [",", ";", "\t", "|"]
-    for sep in separadores:
-        try:
-            # reset pointer antes de cada tentativa
-            try:
-                uploaded.seek(0)
-            except Exception:
-                pass
-            df = pd.read_csv(uploaded, sep=sep)
-            if df.shape[1] > 1:
-                return df
-        except Exception:
-            continue
-    # tentativa final mais permissiva
-    try:
-        try:
-            uploaded.seek(0)
-        except Exception:
-            pass
-        df = pd.read_csv(uploaded, engine="python", sep=None)
-        return df
-    except Exception:
-        st.error("Não foi possível ler o CSV. Verifique o arquivo.")
-        st.stop()
+# Upload do arquivo
+file = st.file_uploader("Envie o arquivo IRRIGACAO.csv", type=["csv"])
 
-if arquivo:
-    df = ler_csv_seguro(arquivo)
+if file:
+    df = pd.read_csv(file)
 
-    # limpar nomes de coluna (espaços, aspas estranhas)
-    df.columns = [str(c).strip().strip('"').strip("'") for c in df.columns]
+    # Normalização básica para evitar erros
+    df.columns = df.columns.str.strip()
 
-    st.write("Colunas encontradas:", df.columns.tolist())
-
-    # possíveis nomes de lat/lon (em lower)
-    possiveis_lat = ["latitude", "lat"]
-    possiveis_lon = ["longitude", "lon", "long"]
-
-    cols_lower = {c.lower(): c for c in df.columns}
-
-    col_lat = None
-    col_lon = None
-    for name in possiveis_lat:
-        if name in cols_lower:
-            col_lat = cols_lower[name]
-            break
-    for name in possiveis_lon:
-        if name in cols_lower:
-            col_lon = cols_lower[name]
-            break
+    # Identifica colunas de latitude e longitude
+    col_lat = next((c for c in df.columns if "lat" in c.lower()), None)
+    col_lon = next((c for c in df.columns if "lon" in c.lower()), None)
 
     if not col_lat or not col_lon:
-        st.error("Não encontrei colunas de latitude/longitude. Verifique os nomes das colunas.")
+        st.error("Não encontrei colunas de latitude e longitude.")
         st.stop()
 
-    # converter lat/lon para numérico: trocar vírgula por ponto, remover espaços/aspas
-    df[col_lat] = pd.to_numeric(
-        df[col_lat].astype(str)
-        .str.replace(",", ".", regex=False)
-        .str.replace('"', "", regex=False)
-        .str.strip(),
-        errors="coerce",
-    )
-    df[col_lon] = pd.to_numeric(
-        df[col_lon].astype(str)
-        .str.replace(",", ".", regex=False)
-        .str.replace('"', "", regex=False)
-        .str.strip(),
-        errors="coerce",
-    )
+    # Filtrar somente coordenadas válidas
+    df_valid = df.dropna(subset=[col_lat, col_lon]).copy()
 
-    # remover linhas sem coordenadas válidas
-    total_before = len(df)
-    df = df.dropna(subset=[col_lat, col_lon])
-    total_after = len(df)
-    descartadas = total_before - total_after
+    # Ajustar tipos numéricos
+    df_valid[col_lat] = pd.to_numeric(df_valid[col_lat], errors="coerce")
+    df_valid[col_lon] = pd.to_numeric(df_valid[col_lon], errors="coerce")
+    df_valid = df_valid.dropna(subset=[col_lat, col_lon])
 
-    st.info(f"Linhas com coordenadas válidas: {total_after} — descartadas: {descartadas}")
+    # Centro do mapa
+    lat_med = df_valid[col_lat].mean()
+    lon_med = df_valid[col_lon].mean()
 
-    if total_after == 0:
-        st.error("Nenhuma linha contém latitude e longitude válidas após a limpeza.")
-        st.stop()
+    # Criar mapa
+    mapa = folium.Map(location=[lat_med, lon_med], zoom_start=7)
+    mc = MarkerCluster().add_to(mapa)
 
-    # criar mapa
-    lat_med = df[col_lat].mean()
-    lon_med = df[col_lon].mean()
+    # Ícone de gota (cor azul)
+    drop_icon = folium.Icon(color="blue", icon="tint", prefix="fa")
 
-    m = folium.Map(location=[lat_med, lon_med], zoom_start=10)
-    mc = MarkerCluster().add_to(m)
-
-    # adicionar marcadores (skip se algo ainda der errado)
-    for _, row in df.iterrows():
-        try:
-            lat = float(row[col_lat])
-            lon = float(row[col_lon])
-            folium.Marker([lat, lon], popup=str(row.to_dict())).add_to(mc)
-        except Exception:
-            # ignora linha problemática
-            continue
-
-    st.subheader("Mapa")
-    st_folium(m, width=800, height=500)
-
-    st.subheader("DataFrame")
-    st.dataframe(df)
-
-    # botões lado a lado
-    col1, col2 = st.columns(2)
-
-    with col1:
-        html_str = m.get_root().render()
-        st.download_button(
-            label="Baixar Mapa (HTML)",
-            data=html_str,
-            file_name="mapa.html",
-            mime="text/html",
+    # Adiciona marcadores
+    for _, row in df_valid.iterrows():
+        popup_txt = (
+            f"<b>Município:</b> {row.get('Mun.', '')}<br>"
+            f"<b>Descrição:</b> {row.get('Descrição', '')}<br>"
+            f"<b>Quantidade:</b> {row.get('Quantidade', '')}"
         )
 
+        folium.Marker(
+            location=[row[col_lat], row[col_lon]],
+            popup=popup_txt,
+            icon=drop_icon
+        ).add_to(mc)
+
+    # Exibe mapa
+    folium_static(mapa, width=900, height=600)
+
+    st.subheader("Tabela do Arquivo")
+    st.dataframe(df, use_container_width=True)
+
+    # === BOTÕES PARA DOWNLOAD ===
+    st.subheader("Downloads")
+
+    col1, col2 = st.columns(2)
+
+    # Download do mapa
+    with col1:
+        map_html = mapa._repr_html_().encode("utf-8")
+        st.download_button(
+            "Baixar Mapa (HTML)",
+            data=map_html,
+            file_name="mapa_irrigacao.html",
+            mime="text/html"
+        )
+
+    # Download do dataframe
     with col2:
         buffer = BytesIO()
         df.to_excel(buffer, index=False)
         buffer.seek(0)
+
         st.download_button(
-            label="Baixar DataFrame (XLSX)",
+            "Baixar Dataframe (XLSX)",
             data=buffer,
-            file_name="dados.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            file_name="IRRIGACAO.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
